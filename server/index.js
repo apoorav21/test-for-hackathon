@@ -18,9 +18,11 @@ const io = socketIO(server, {
   path: '/bridge'
 });
 
-// Initialize Speech-to-Text client
+// Initialize Speech-to-Text client with credentials from environment variable
 const speechClient = new speech.SpeechClient({
-  keyFilename: path.join(__dirname, 'google-credentials.json')
+  credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
+    JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS) : 
+    undefined
 });
 
 // Middleware
