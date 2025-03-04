@@ -4,6 +4,7 @@ import { socket, PeerConnection } from './communication';
 import MainWindow from './components/MainWindow';
 import CallWindow from './components/CallWindow';
 import CallModal from './components/CallModal';
+import SpeechToText from './components/SpeechToText';
 
 class App extends Component {
   constructor() {
@@ -13,7 +14,8 @@ class App extends Component {
       callModal: '',
       callFrom: '',
       localSrc: null,
-      peerSrc: null
+      peerSrc: null,
+      audioStream: null
     };
     this.pc = {};
     this.config = null;
@@ -41,7 +43,11 @@ class App extends Component {
     this.config = config;
     this.pc = new PeerConnection(friendID)
       .on('localStream', (src) => {
-        const newState = { callWindow: 'active', localSrc: src };
+        const newState = { 
+          callWindow: 'active', 
+          localSrc: src,
+          audioStream: src // Store the audio stream for speech-to-text
+        };
         if (!isCaller) newState.callModal = '';
         this.setState(newState);
       })
@@ -65,25 +71,29 @@ class App extends Component {
       callWindow: '',
       callModal: '',
       localSrc: null,
-      peerSrc: null
+      peerSrc: null,
+      audioStream: null
     });
   }
 
   render() {
-    const { callFrom, callModal, callWindow, localSrc, peerSrc } = this.state;
+    const { callFrom, callModal, callWindow, localSrc, peerSrc, audioStream } = this.state;
     return (
       <div>
         <MainWindow startCall={this.startCallHandler} />
         {!_.isEmpty(this.config) && (
-          <CallWindow
-            status={callWindow}
-            localSrc={localSrc}
-            peerSrc={peerSrc}
-            config={this.config}
-            mediaDevice={this.pc.mediaDevice}
-            endCall={this.endCallHandler}
-          />
-        ) }
+          <>
+            <CallWindow
+              status={callWindow}
+              localSrc={localSrc}
+              peerSrc={peerSrc}
+              config={this.config}
+              mediaDevice={this.pc.mediaDevice}
+              endCall={this.endCallHandler}
+            />
+            <SpeechToText audioStream={audioStream} />
+          </>
+        )}
         <CallModal
           status={callModal}
           startCall={this.startCallHandler}

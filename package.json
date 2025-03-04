@@ -16,6 +16,7 @@
     "@fortawesome/fontawesome-svg-core": "6.6.0",
     "@fortawesome/free-solid-svg-icons": "6.6.0",
     "@fortawesome/react-fontawesome": "0.2.2",
+    "@google-cloud/speech": "6.7.1",
     "babel-loader": "9.2.1",
     "bootstrap": "5.3.3",
     "classnames": "2.5.1",
@@ -50,7 +51,7 @@
     "webpack-dev-server": "5.1.0"
   },
   "engines": {
-    "node": "20"
+    "node": ">=20"
   },
   "repository": {
     "type": "git",

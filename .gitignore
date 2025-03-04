@@ -1,2 +1,5 @@
 client/dist/
 client/index.html
+# Google Cloud credentials
+config/*.json
+.env

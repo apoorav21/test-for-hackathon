@@ -1,6 +1,7 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   mode: 'production',
@@ -56,6 +57,9 @@ module.exports = {
       title: 'React VideoCall - Minh Son Nguyen',
       filename: 'index.html',
       template: 'src/html/index.html'
+    }),
+    new webpack.DefinePlugin({
+      'process.env.GOOGLE_APPLICATION_CREDENTIALS': JSON.stringify(process.env.GOOGLE_APPLICATION_CREDENTIALS)
     })
   ],
   optimization: {
