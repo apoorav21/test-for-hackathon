@@ -9,10 +9,8 @@ const SpeechToText = ({ audioStream, peerStream }) => {
   const socketRef = useRef(null);
   const audioContextRef = useRef(null);
   const processorRef = useRef(null);
-  const streamRef = useRef(null);
   const transcriptionRef = useRef(null);
   const isStreamActiveRef = useRef(false);
-  const [speaker, setSpeaker] = useState('local'); // 'local' or 'remote'
 
   useEffect(() => {
     if ((audioStream || peerStream) && isTranscribing) {
@@ -38,26 +36,22 @@ const SpeechToText = ({ audioStream, peerStream }) => {
       // Set up audio processing
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       
-      // Create a MediaStreamDestination to mix both streams
-      const destination = audioContextRef.current.createMediaStreamDestination();
+      // Create script processor for audio processing
+      processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
       
       // Connect local stream if available
       if (audioStream) {
         const localSource = audioContextRef.current.createMediaStreamSource(audioStream);
-        localSource.connect(destination);
+        localSource.connect(processorRef.current);
       }
       
       // Connect remote stream if available
       if (peerStream) {
         const remoteSource = audioContextRef.current.createMediaStreamSource(peerStream);
-        remoteSource.connect(destination);
+        remoteSource.connect(processorRef.current);
       }
-      
-      // Create script processor for audio processing
-      processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-      
-      // Connect the mixed stream to the processor
-      destination.connect(processorRef.current);
+
+      // Connect processor to destination
       processorRef.current.connect(audioContextRef.current.destination);
 
       // Handle audio processing
@@ -118,9 +112,6 @@ const SpeechToText = ({ audioStream, peerStream }) => {
     }
     if (processorRef.current) {
       processorRef.current.disconnect();
-    }
-    if (streamRef.current) {
-      streamRef.current.disconnect();
     }
     if (audioContextRef.current) {
       audioContextRef.current.close();
