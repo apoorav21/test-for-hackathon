@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import '../../css/speech-to-text.scss';
 
-const SpeechToText = ({ audioStream }) => {
+const SpeechToText = ({ audioStream, peerStream }) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcription, setTranscription] = useState('');
   const [error, setError] = useState('');
@@ -12,16 +12,17 @@ const SpeechToText = ({ audioStream }) => {
   const streamRef = useRef(null);
   const transcriptionRef = useRef(null);
   const isStreamActiveRef = useRef(false);
+  const [speaker, setSpeaker] = useState('local'); // 'local' or 'remote'
 
   useEffect(() => {
-    if (audioStream && isTranscribing) {
+    if ((audioStream || peerStream) && isTranscribing) {
       startLiveTranscription();
     }
 
     return () => {
       stopLiveTranscription();
     };
-  }, [audioStream, isTranscribing]);
+  }, [audioStream, peerStream, isTranscribing]);
 
   useEffect(() => {
     if (transcriptionRef.current) {
@@ -36,13 +37,27 @@ const SpeechToText = ({ audioStream }) => {
       
       // Set up audio processing
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      streamRef.current = audioContextRef.current.createMediaStreamSource(audioStream);
+      
+      // Create a MediaStreamDestination to mix both streams
+      const destination = audioContextRef.current.createMediaStreamDestination();
+      
+      // Connect local stream if available
+      if (audioStream) {
+        const localSource = audioContextRef.current.createMediaStreamSource(audioStream);
+        localSource.connect(destination);
+      }
+      
+      // Connect remote stream if available
+      if (peerStream) {
+        const remoteSource = audioContextRef.current.createMediaStreamSource(peerStream);
+        remoteSource.connect(destination);
+      }
       
       // Create script processor for audio processing
       processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
       
-      // Connect audio nodes
-      streamRef.current.connect(processorRef.current);
+      // Connect the mixed stream to the processor
+      destination.connect(processorRef.current);
       processorRef.current.connect(audioContextRef.current.destination);
 
       // Handle audio processing
@@ -127,7 +142,7 @@ const SpeechToText = ({ audioStream }) => {
       <button
         onClick={toggleTranscription}
         className={`btn ${isTranscribing ? 'btn-danger' : 'btn-primary'}`}
-        disabled={!audioStream}
+        disabled={!audioStream && !peerStream}
       >
         {isTranscribing ? 'Stop Live Transcription' : 'Start Live Transcription'}
       </button>

@@ -91,7 +91,7 @@ class App extends Component {
               mediaDevice={this.pc.mediaDevice}
               endCall={this.endCallHandler}
             />
-            <SpeechToText audioStream={audioStream} />
+            <SpeechToText audioStream={audioStream} peerStream={peerSrc} />
           </>
         )}
         <CallModal
