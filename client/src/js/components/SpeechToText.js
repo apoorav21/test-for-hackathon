@@ -1,75 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import speech from '@google-cloud/speech';
+import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
 
 const SpeechToText = ({ audioStream }) => {
-  const [transcript, setTranscript] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcription, setTranscription] = useState('');
+  const [error, setError] = useState('');
+  const socketRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const processorRef = useRef(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
-    if (audioStream && isListening) {
-      startSpeechToText();
+    if (audioStream && isTranscribing) {
+      startLiveTranscription();
     }
-  }, [audioStream, isListening]);
 
-  const startSpeechToText = async () => {
+    return () => {
+      stopLiveTranscription();
+    };
+  }, [audioStream, isTranscribing]);
+
+  const startLiveTranscription = async () => {
     try {
-      // Initialize the Speech-to-Text client with credentials
-      const client = new speech.SpeechClient({
-        credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 
-          JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS) : 
-          undefined
+      // Initialize socket connection
+      socketRef.current = io({ path: '/bridge' });
+      
+      // Set up audio processing
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      streamRef.current = audioContextRef.current.createMediaStreamSource(audioStream);
+      
+      // Create script processor for audio processing
+      processorRef.current = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+      
+      // Connect audio nodes
+      streamRef.current.connect(processorRef.current);
+      processorRef.current.connect(audioContextRef.current.destination);
+
+      // Handle audio processing
+      processorRef.current.onaudioprocess = (e) => {
+        if (socketRef.current && isTranscribing) {
+          const audioData = e.inputBuffer.getChannelData(0);
+          // Convert Float32Array to Int16Array for Google Speech-to-Text
+          const int16Data = new Int16Array(audioData.length);
+          for (let i = 0; i < audioData.length; i++) {
+            int16Data[i] = Math.max(-1, Math.min(1, audioData[i])) * 0x7FFF;
+          }
+          socketRef.current.emit('audioData', int16Data.buffer);
+        }
+      };
+
+      // Handle transcription results
+      socketRef.current.on('transcription', ({ transcript, isFinal }) => {
+        setTranscription(prev => {
+          if (isFinal) {
+            return prev + '\n' + transcript;
+          }
+          // Update interim results
+          const lines = prev.split('\n');
+          lines[lines.length - 1] = transcript;
+          return lines.join('\n');
+        });
       });
 
-      const config = {
-        encoding: 'LINEAR16',
-        sampleRateHertz: 48000,
-        languageCode: 'en-US',
-        model: 'default',
-        useEnhanced: true,
-      };
+      // Handle errors
+      socketRef.current.on('transcriptionError', (error) => {
+        setError('Transcription error: ' + error);
+      });
 
-      const request = {
-        config,
-        interimResults: true,
-      };
-
-      // Create a recognize stream
-      const recognizeStream = client
-        .streamingRecognize(request)
-        .on('error', console.error)
-        .on('data', (data) => {
-          if (data.results[0] && data.results[0].alternatives[0]) {
-            setTranscript(data.results[0].alternatives[0].transcript);
-          }
-        });
-
-      // Pipe the audio stream to the recognize stream
-      audioStream.pipe(recognizeStream);
-
-      return () => {
-        recognizeStream.end();
-      };
-    } catch (error) {
-      console.error('Error starting speech-to-text:', error);
+      // Start transcription
+      socketRef.current.emit('startTranscription');
+      setError('');
+    } catch (err) {
+      setError('Error starting live transcription: ' + err.message);
     }
   };
 
-  const toggleListening = () => {
-    setIsListening(!isListening);
+  const stopLiveTranscription = () => {
+    if (socketRef.current) {
+      socketRef.current.emit('stopTranscription');
+      socketRef.current.disconnect();
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+    }
+    if (streamRef.current) {
+      streamRef.current.disconnect();
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
+  };
+
+  const toggleTranscription = () => {
+    setIsTranscribing(!isTranscribing);
   };
 
   return (
-    <div className="speech-to-text-container">
+    <div className="speech-to-text">
       <button
-        className={`btn ${isListening ? 'btn-danger' : 'btn-primary'}`}
-        onClick={toggleListening}
+        onClick={toggleTranscription}
+        className={`btn ${isTranscribing ? 'btn-danger' : 'btn-primary'}`}
+        disabled={!audioStream}
       >
-        {isListening ? 'Stop Transcription' : 'Start Transcription'}
+        {isTranscribing ? 'Stop Live Transcription' : 'Start Live Transcription'}
       </button>
-      <div className="transcript-box mt-3">
-        <h4>Transcript:</h4>
-        <p>{transcript}</p>
-      </div>
+      
+      {error && <div className="error-message">{error}</div>}
+      
+      {transcription && (
+        <div className="transcription">
+          <h3>Live Transcription:</h3>
+          <p>{transcription}</p>
+        </div>
+      )}
     </div>
   );
 };

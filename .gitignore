@@ -3,3 +3,7 @@ client/index.html
 # Google Cloud credentials
 config/*.json
 .env
+server/*.json
+node_modules/
+.DS_Store
+*.log
