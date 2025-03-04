@@ -11,6 +11,7 @@ const SpeechToText = ({ audioStream }) => {
   const processorRef = useRef(null);
   const streamRef = useRef(null);
   const transcriptionRef = useRef(null);
+  const isStreamActiveRef = useRef(false);
 
   useEffect(() => {
     if (audioStream && isTranscribing) {
@@ -46,7 +47,7 @@ const SpeechToText = ({ audioStream }) => {
 
       // Handle audio processing
       processorRef.current.onaudioprocess = (e) => {
-        if (socketRef.current && isTranscribing) {
+        if (socketRef.current && isTranscribing && isStreamActiveRef.current) {
           const audioData = e.inputBuffer.getChannelData(0);
           // Convert Float32Array to Int16Array for Google Speech-to-Text
           const int16Data = new Int16Array(audioData.length);
@@ -70,16 +71,28 @@ const SpeechToText = ({ audioStream }) => {
         });
       });
 
+      // Handle transcription started
+      socketRef.current.on('transcriptionStarted', () => {
+        isStreamActiveRef.current = true;
+        setError('');
+      });
+
+      // Handle transcription stopped
+      socketRef.current.on('transcriptionStopped', () => {
+        isStreamActiveRef.current = false;
+      });
+
       // Handle errors
       socketRef.current.on('transcriptionError', (error) => {
         setError('Transcription error: ' + error);
+        isStreamActiveRef.current = false;
       });
 
       // Start transcription
       socketRef.current.emit('startTranscription');
-      setError('');
     } catch (err) {
       setError('Error starting live transcription: ' + err.message);
+      isStreamActiveRef.current = false;
     }
   };
 
@@ -97,10 +110,16 @@ const SpeechToText = ({ audioStream }) => {
     if (audioContextRef.current) {
       audioContextRef.current.close();
     }
+    isStreamActiveRef.current = false;
   };
 
   const toggleTranscription = () => {
-    setIsTranscribing(!isTranscribing);
+    if (!isTranscribing) {
+      setIsTranscribing(true);
+    } else {
+      setIsTranscribing(false);
+      stopLiveTranscription();
+    }
   };
 
   return (

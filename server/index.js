@@ -65,6 +65,7 @@ app.post('/api/transcribe', async (req, res) => {
 // Handle socket connections
 io.on('connection', (socket) => {
   let id;
+  let recognizeStream = null;
   
   // Initialize user ID
   socket.on('init', async () => {
@@ -103,52 +104,73 @@ io.on('connection', (socket) => {
   });
 
   // Handle speech-to-text streaming
-  let recognizeStream = null;
-
   socket.on('startTranscription', () => {
-    const request = {
-      config: {
-        encoding: 'LINEAR16',
-        sampleRateHertz: 48000,
-        languageCode: 'en-US',
-        model: 'default',
-        useEnhanced: true,
-      },
-      interimResults: true,
-    };
+    try {
+      const request = {
+        config: {
+          encoding: 'LINEAR16',
+          sampleRateHertz: 48000,
+          languageCode: 'en-US',
+          model: 'default',
+          useEnhanced: true,
+        },
+        interimResults: true,
+      };
 
-    recognizeStream = speechClient
-      .streamingRecognize(request)
-      .on('error', (error) => {
-        console.error('Streaming recognition error:', error);
-        socket.emit('transcriptionError', error.message);
-      })
-      .on('data', (data) => {
-        if (data.results[0] && data.results[0].alternatives[0]) {
-          const transcript = data.results[0].alternatives[0].transcript;
-          const isFinal = data.results[0].isFinal;
-          socket.emit('transcription', { transcript, isFinal });
-        }
-      });
+      recognizeStream = speechClient
+        .streamingRecognize(request)
+        .on('error', (error) => {
+          console.error('Streaming recognition error:', error);
+          socket.emit('transcriptionError', error.message);
+        })
+        .on('data', (data) => {
+          if (data.results[0] && data.results[0].alternatives[0]) {
+            const transcript = data.results[0].alternatives[0].transcript;
+            const isFinal = data.results[0].isFinal;
+            socket.emit('transcription', { transcript, isFinal });
+          }
+        });
+
+      socket.emit('transcriptionStarted');
+    } catch (error) {
+      console.error('Error starting transcription:', error);
+      socket.emit('transcriptionError', error.message);
+    }
   });
 
   socket.on('audioData', (audioData) => {
-    if (recognizeStream) {
-      recognizeStream.write(audioData);
+    try {
+      if (recognizeStream && !recognizeStream.destroyed) {
+        recognizeStream.write(audioData);
+      }
+    } catch (error) {
+      console.error('Error writing audio data:', error);
+      socket.emit('transcriptionError', error.message);
     }
   });
 
   socket.on('stopTranscription', () => {
-    if (recognizeStream) {
-      recognizeStream.end();
-      recognizeStream = null;
+    try {
+      if (recognizeStream && !recognizeStream.destroyed) {
+        recognizeStream.end();
+        recognizeStream = null;
+        socket.emit('transcriptionStopped');
+      }
+    } catch (error) {
+      console.error('Error stopping transcription:', error);
+      socket.emit('transcriptionError', error.message);
     }
   });
 
   // Handle disconnection
   socket.on('disconnect', () => {
-    if (recognizeStream) {
-      recognizeStream.end();
+    try {
+      if (recognizeStream && !recognizeStream.destroyed) {
+        recognizeStream.end();
+        recognizeStream = null;
+      }
+    } catch (error) {
+      console.error('Error cleaning up stream:', error);
     }
     users.remove(id);
     console.log(id, 'disconnected');
