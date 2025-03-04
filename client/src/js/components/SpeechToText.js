@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import '../../css/speech-to-text.scss';
 
 const SpeechToText = ({ audioStream }) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -9,6 +10,7 @@ const SpeechToText = ({ audioStream }) => {
   const audioContextRef = useRef(null);
   const processorRef = useRef(null);
   const streamRef = useRef(null);
+  const transcriptionRef = useRef(null);
 
   useEffect(() => {
     if (audioStream && isTranscribing) {
@@ -19,6 +21,12 @@ const SpeechToText = ({ audioStream }) => {
       stopLiveTranscription();
     };
   }, [audioStream, isTranscribing]);
+
+  useEffect(() => {
+    if (transcriptionRef.current) {
+      transcriptionRef.current.scrollTop = transcriptionRef.current.scrollHeight;
+    }
+  }, [transcription]);
 
   const startLiveTranscription = async () => {
     try {
@@ -108,7 +116,7 @@ const SpeechToText = ({ audioStream }) => {
       {error && <div className="error-message">{error}</div>}
       
       {transcription && (
-        <div className="transcription">
+        <div className="transcription" ref={transcriptionRef}>
           <h3>Live Transcription:</h3>
           <p>{transcription}</p>
         </div>
