@@ -6,47 +6,61 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   mode: 'production',
-  entry: './src/index.js',
+  entry: './src/js/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.[contenthash].js',
+    filename: 'js/[name].[contenthash].js',
     clean: true,
+    publicPath: '/'
+  },
+  optimization: {
+    minimize: true,
+    minimizer: [new TerserPlugin()],
+    splitChunks: {
+      chunks: 'all',
+      name: 'vendors',
+      filename: 'js/[name].[contenthash].js'
+    }
   },
   resolve: {
+    extensions: ['.js', '.jsx'],
+    fallback: {
+      "fs": false,
+      "net": false,
+      "tls": false,
+      "child_process": false,
+      "path": require.resolve("path-browserify"),
+      "stream": require.resolve("stream-browserify"),
+      "crypto": require.resolve("crypto-browserify"),
+      "buffer": require.resolve("buffer/"),
+      "util": require.resolve("util/"),
+      "assert": require.resolve("assert/"),
+      "http": require.resolve("stream-http"),
+      "https": require.resolve("https-browserify"),
+      "os": require.resolve("os-browserify/browser"),
+      "url": require.resolve("url/"),
+      "querystring": require.resolve("querystring-es3")
+    },
     alias: {
       'node:util': 'util',
       'node:events': 'events',
       'node:process': 'process/browser',
       'node:buffer': 'buffer',
       'node:stream': 'stream-browserify',
+      'node:crypto': 'crypto-browserify',
       'node:path': 'path-browserify',
-      'node:os': 'os-browserify/browser',
-      'node:url': 'url',
+      'node:assert': 'assert',
       'node:http': 'stream-http',
       'node:https': 'https-browserify',
-      'node:crypto': 'crypto-browserify',
-      'node:assert': 'assert',
+      'node:os': 'os-browserify/browser',
+      'node:url': 'url',
       'node:querystring': 'querystring-es3'
-    },
-    fallback: {
-      "stream": require.resolve("stream-browserify"),
-      "buffer": require.resolve("buffer/"),
-      "util": require.resolve("util/"),
-      "url": require.resolve("url/"),
-      "http": require.resolve("stream-http"),
-      "https": require.resolve("https-browserify"),
-      "crypto": require.resolve("crypto-browserify"),
-      "path": require.resolve("path-browserify"),
-      "os": require.resolve("os-browserify/browser"),
-      "assert": require.resolve("assert/"),
-      "querystring": require.resolve("querystring-es3"),
-      "fs": false,
-      "net": false,
-      "tls": false,
-      "child_process": false,
-      "events": require.resolve("events/"),
-      "process": require.resolve("process/browser")
     }
+  },
+  stats: {
+    children: true,
+    errorDetails: true,
+    warnings: true
   },
   plugins: [
     new webpack.ProvidePlugin({
@@ -58,32 +72,46 @@ module.exports = {
       'process.env.GOOGLE_APPLICATION_CREDENTIALS': JSON.stringify(process.env.GOOGLE_APPLICATION_CREDENTIALS)
     }),
     new MiniCssExtractPlugin({
-      filename: 'styles.[contenthash].css',
+      filename: 'css/[name].[contenthash].css'
     }),
     new HtmlWebpackPlugin({
-      template: './src/index.html',
-    }),
+      title: 'React VideoCall',
+      filename: 'index.html',
+      template: 'src/html/index.html'
+    })
   ],
-  optimization: {
-    minimize: true,
-    minimizer: [new TerserPlugin()],
-  },
   module: {
     rules: [
       {
         test: /\.js$/,
-        exclude: /node_modules/,
+        exclude: /(node_modules|bower_components)/,
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-env', '@babel/preset-react'],
-          },
-        },
+            presets: ['@babel/preset-react', '@babel/preset-env']
+          }
+        }
       },
       {
-        test: /\.css$/,
-        use: [MiniCssExtractPlugin.loader, 'css-loader'],
+        test: require.resolve('webrtc-adapter'),
+        use: 'expose-loader'
       },
-    ],
-  },
+      {
+        test: /\.scss$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader']
+      },
+      {
+        test: /\.(png|woff|woff2|eot|ttf|svg)$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: '[name].[ext]',
+              outputPath: 'assets'
+            }
+          }
+        ]
+      }
+    ]
+  }
 };
