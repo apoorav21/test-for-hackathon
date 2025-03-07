@@ -1,55 +1,68 @@
-## React-VideoCall
-Demo app: https://morning-escarpment-67980.onrender.com  
+# Sign Language Translation App
 
-<img align="right" width="420" src="https://raw.githubusercontent.com/nguymin4/react-videocall/master/screenshots/1.png"  alt =" " style="border: solid 1px #d4d4d4" />
-  
-Video call to your friend without registering. 
-Simply send your friend your auto-generated unique ID to make the call.  
-Everytime you open a new tab, the server gives you a totally different unique ID.
+A real-time sign language translation application that uses TensorFlow.js for sign language recognition and translation.
 
-### Installation
+## Features
 
+- Real-time sign language translation
+- Video stream processing
+- TensorFlow.js model integration
+- WebSocket communication for live translation
+- Speech-to-text capabilities
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn
+- Google Cloud credentials (for speech-to-text features)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone <your-repository-url>
+cd <repository-name>
 ```
-npm install -g yarn
 
+2. Install dependencies:
+```bash
+npm install
+# or
 yarn install
 ```
 
-### Development
-
-Run server
+3. Set up environment variables:
+Create a `.env` file in the root directory with your Google Cloud credentials:
 ```
-yarn watch:server
-```
-
-Run webpack-dev-server - http://localhost:9000
-```
-yarn watch:client
+GOOGLE_APPLICATION_CREDENTIALS=path/to/your/credentials.json
 ```
 
+## Running the Application
 
-### Deployment
-
-**Render** (Free - Recommended)
-
-<a href="https://render.com/deploy?repo=https://github.com/nguymin4/react-videocall/tree/production" style="display: block; margin-bottom: 20px">
-  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" width="160">
-</a>
-
-**Heroku**
-
-<a href="https://render.com/deploy?repo=https://github.com/nguymin4/react-videocall/tree/production" style="display: block; margin-bottom: 20px">
-  <img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku" width="160">
-</a>
-
-**Custom**
-```
-# Install dependencies
-yarn install
-
-# Build front-end assets
-yarn build
-
-# Run server
+1. Start the server:
+```bash
+npm start
+# or
 yarn start
 ```
+
+2. Open your browser and navigate to `http://localhost:5000`
+
+## Project Structure
+
+- `client/` - Frontend React application
+- `server/` - Backend Node.js server
+- `ai/` - TensorFlow.js model and related files
+
+## Technologies Used
+
+- React
+- Node.js
+- Express
+- Socket.IO
+- TensorFlow.js
+- Google Cloud Speech-to-Text API
+
+## License
+
+MIT
